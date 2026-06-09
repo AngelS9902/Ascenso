@@ -1,0 +1,311 @@
+// Acciones que el usuario registra. Cada acción otorga XP a una categoría y
+// puede alimentar estadísticas, contadores, rachas y daño a jefes.
+//
+// Esquema:
+//   id, categoryId, name, detail, icon
+//   xp        -> XP fija (acción de un toque)
+//   stat      -> { id, amount }  suma a una estadística acumulativa
+//   counter   -> { id, amount }  incrementa un contador con nombre (logros/árbol)
+//   streakKey -> avanza una racha de días consecutivos
+//   boss      -> { id, amount }  daño fijo a un jefe
+//   quantify  -> acción con cantidad variable (abre un pequeño selector):
+//       { unit, label, step, min, default, xpPerUnit,
+//         statId, statPerUnit, counterId, counterPerUnit,
+//         bossId, bossPerUnit, streakMin }
+
+export const ACTIONS = [
+  // ───────────────────────── Salud ─────────────────────────
+  {
+    id: 'agua',
+    categoryId: 'salud',
+    name: 'Tomar un vaso de agua',
+    detail: '250 ml · +8 XP',
+    icon: 'Droplet',
+    xp: 8,
+    stat: { id: 'aguaLitros', amount: 0.25 },
+    streakKey: 'agua',
+  },
+  {
+    id: 'ejercicio',
+    categoryId: 'salud',
+    name: 'Hacer ejercicio',
+    detail: 'Sesión de entrenamiento',
+    icon: 'Dumbbell',
+    xp: 30,
+    streakKey: 'ejercicio',
+    counter: { id: 'sesionesEjercicio', amount: 1 },
+  },
+  {
+    id: 'comida-sana',
+    categoryId: 'salud',
+    name: 'Comer saludable',
+    detail: 'Una comida equilibrada',
+    icon: 'Salad',
+    xp: 14,
+    streakKey: 'comida-sana',
+  },
+  {
+    id: 'dormir',
+    categoryId: 'salud',
+    name: 'Registrar sueño',
+    detail: 'Horas dormidas anoche',
+    icon: 'Moon',
+    quantify: {
+      label: 'Horas dormidas',
+      unit: 'h',
+      step: 0.5,
+      min: 0,
+      default: 8,
+      xpPerUnit: 4,
+      statId: 'horasDormidas',
+      statPerUnit: 1,
+      streakKey: 'dormir8',
+      streakMin: 8,
+    },
+  },
+  {
+    id: 'sin-refresco',
+    categoryId: 'salud',
+    name: 'Día sin refresco',
+    detail: 'Evitaste azúcar líquida',
+    icon: 'CupSoda',
+    xp: 12,
+    streakKey: 'sin-refresco',
+  },
+
+  // ─────────────────────── Conocimiento ───────────────────────
+  {
+    id: 'leer',
+    categoryId: 'conocimiento',
+    name: 'Leer',
+    detail: 'Minutos de lectura',
+    icon: 'BookOpen',
+    quantify: {
+      label: 'Minutos leídos',
+      unit: 'min',
+      step: 5,
+      min: 1,
+      default: 20,
+      xpPerUnit: 1,
+      statId: 'minutosLeidos',
+      statPerUnit: 1,
+      streakKey: 'leer',
+    },
+  },
+  {
+    id: 'paginas',
+    categoryId: 'conocimiento',
+    name: 'Leer páginas',
+    detail: 'Avanza tu libro actual',
+    icon: 'BookMarked',
+    quantify: {
+      label: 'Páginas leídas',
+      unit: 'pág',
+      step: 5,
+      min: 1,
+      default: 20,
+      xpPerUnit: 0.6,
+      counterId: 'paginasLeidas',
+      counterPerUnit: 1,
+    },
+  },
+  {
+    id: 'libro',
+    categoryId: 'conocimiento',
+    name: 'Terminar un libro',
+    detail: 'Completaste una lectura',
+    icon: 'BookCheck',
+    xp: 120,
+    counter: { id: 'librosTerminados', amount: 1 },
+  },
+  {
+    id: 'estudiar',
+    categoryId: 'conocimiento',
+    name: 'Estudiar',
+    detail: 'Minutos de estudio',
+    icon: 'GraduationCap',
+    quantify: {
+      label: 'Minutos de estudio',
+      unit: 'min',
+      step: 10,
+      min: 5,
+      default: 30,
+      xpPerUnit: 0.9,
+      statId: 'horasEstudiadas',
+      statPerUnit: 1 / 60,
+      streakKey: 'estudiar',
+    },
+  },
+  {
+    id: 'idioma',
+    categoryId: 'conocimiento',
+    name: 'Practicar idioma',
+    detail: 'Una sesión de práctica',
+    icon: 'Languages',
+    xp: 18,
+    streakKey: 'idioma',
+  },
+
+  // ───────────────────────── Finanzas ─────────────────────────
+  {
+    id: 'ahorro',
+    categoryId: 'finanzas',
+    name: 'Registrar ahorro',
+    detail: 'Dinero apartado',
+    icon: 'PiggyBank',
+    quantify: {
+      label: 'Cantidad ahorrada',
+      unit: '$',
+      prefix: '$',
+      step: 50,
+      min: 1,
+      default: 100,
+      xpPerUnit: 0.05,
+      statId: 'dineroAhorrado',
+      statPerUnit: 1,
+    },
+  },
+  {
+    id: 'gasto',
+    categoryId: 'finanzas',
+    name: 'Registrar un gasto',
+    detail: 'Mantén tus cuentas claras',
+    icon: 'Receipt',
+    xp: 6,
+    counter: { id: 'gastosRegistrados', amount: 1 },
+    streakKey: 'registro-gastos',
+  },
+  {
+    id: 'no-impulsivo',
+    categoryId: 'finanzas',
+    name: 'Evitar compra impulsiva',
+    detail: 'Resististe la tentación',
+    icon: 'HandCoins',
+    xp: 20,
+    counter: { id: 'comprasEvitadas', amount: 1 },
+  },
+  {
+    id: 'presupuesto',
+    categoryId: 'finanzas',
+    name: 'Revisar presupuesto',
+    detail: 'Repaso de tus finanzas',
+    icon: 'Calculator',
+    xp: 15,
+  },
+
+  // ──────────────────────── Disciplina ────────────────────────
+  {
+    id: 'habito',
+    categoryId: 'disciplina',
+    name: 'Cumplir un hábito',
+    detail: 'Mantuviste la constancia',
+    icon: 'CircleCheck',
+    xp: 12,
+    streakKey: 'habito',
+  },
+  {
+    id: 'objetivos-dia',
+    categoryId: 'disciplina',
+    name: 'Completar objetivos del día',
+    detail: 'Cerraste el día cumpliendo',
+    icon: 'ListChecks',
+    xp: 28,
+    streakKey: 'objetivos-dia',
+  },
+  {
+    id: 'temprano',
+    categoryId: 'disciplina',
+    name: 'Despertar temprano',
+    detail: 'Empezaste con ventaja',
+    icon: 'Sunrise',
+    xp: 14,
+    streakKey: 'temprano',
+  },
+  {
+    id: 'foco',
+    categoryId: 'disciplina',
+    name: 'Sesión de enfoque',
+    detail: 'Trabajo profundo sin distracciones',
+    icon: 'Timer',
+    quantify: {
+      label: 'Minutos de enfoque',
+      unit: 'min',
+      step: 5,
+      min: 5,
+      default: 25,
+      xpPerUnit: 0.7,
+      counterId: 'minutosFoco',
+      counterPerUnit: 1,
+    },
+  },
+
+  // ───────────────────────── Bienestar ─────────────────────────
+  {
+    id: 'caminar',
+    categoryId: 'bienestar',
+    name: 'Salir a caminar',
+    detail: 'Distancia recorrida',
+    icon: 'Footprints',
+    quantify: {
+      label: 'Kilómetros caminados',
+      unit: 'km',
+      step: 0.5,
+      min: 0.5,
+      default: 2,
+      xpPerUnit: 12,
+      statId: 'kmCaminados',
+      statPerUnit: 1,
+      streakKey: 'caminar',
+    },
+  },
+  {
+    id: 'menos-redes',
+    categoryId: 'bienestar',
+    name: 'Reducir tiempo en redes',
+    detail: 'Menos pantalla, más vida',
+    icon: 'Smartphone',
+    xp: 14,
+    streakKey: 'menos-redes',
+  },
+  {
+    id: 'recreativo',
+    categoryId: 'bienestar',
+    name: 'Actividad recreativa',
+    detail: 'Algo que disfrutas',
+    icon: 'Palette',
+    xp: 16,
+  },
+  {
+    id: 'social',
+    categoryId: 'bienestar',
+    name: 'Tiempo de calidad',
+    detail: 'Con personas que importan',
+    icon: 'Users',
+    xp: 22,
+    streakKey: 'social',
+  },
+  {
+    id: 'meditar',
+    categoryId: 'bienestar',
+    name: 'Meditar',
+    detail: 'Minutos de calma',
+    icon: 'Wind',
+    quantify: {
+      label: 'Minutos de meditación',
+      unit: 'min',
+      step: 5,
+      min: 1,
+      default: 10,
+      xpPerUnit: 1.5,
+      counterId: 'minutosMeditacion',
+      counterPerUnit: 1,
+      streakKey: 'meditar',
+    },
+  },
+]
+
+export const ACTION_MAP = Object.fromEntries(ACTIONS.map((a) => [a.id, a]))
+
+export function actionsByCategory(categoryId) {
+  return ACTIONS.filter((a) => a.categoryId === categoryId)
+}

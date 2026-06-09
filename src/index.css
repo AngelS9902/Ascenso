@@ -1,0 +1,173 @@
+@import 'tailwindcss';
+
+/*
+  Sistema de diseño — "Ascenso"
+  Dirección: minimalista, premium, oscuro (Solo Leveling / RPG UI / Apple Health).
+  Paleta limitada, mucho espacio en blanco (negativo), tarjetas elegantes.
+  Los tokens aquí generan utilidades de Tailwind v4 (bg-surface, text-muted, etc.).
+*/
+@theme {
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI',
+    Roboto, Helvetica, Arial, sans-serif;
+
+  /* Superficies (capas de profundidad) */
+  --color-bg: #08090e;
+  --color-surface: #0f111a;
+  --color-surface-2: #161a26;
+  --color-surface-3: #1d2230;
+  --color-border: #242938;
+  --color-border-strong: #333b50;
+
+  /* Tinta / texto */
+  --color-ink: #eceef5;
+  --color-muted: #9aa1b8;
+  --color-faint: #5a6178;
+
+  /* Marca */
+  --color-brand: #6366f1;
+  --color-brand-soft: #818cf8;
+
+  /* Acentos por categoría (limitados, vibrantes pero no infantiles) */
+  --color-salud: #34d399;
+  --color-conocimiento: #38bdf8;
+  --color-finanzas: #fbbf24;
+  --color-disciplina: #a78bfa;
+  --color-bienestar: #fb7185;
+  --color-energia: #f97316;
+
+  /* Rarezas de logros (estilo Xbox/Steam) */
+  --color-common: #94a3b8;
+  --color-rare: #60a5fa;
+  --color-epic: #c084fc;
+  --color-legendary: #fbbf24;
+
+  /* Radios y sombras */
+  --radius-xl: 1rem;
+  --radius-2xl: 1.25rem;
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    margin: 0;
+    background-color: var(--color-bg);
+    /* Resplandor sutil de fondo para sensación premium */
+    background-image:
+      radial-gradient(60rem 60rem at 80% -10%, rgba(99, 102, 241, 0.08), transparent 60%),
+      radial-gradient(50rem 50rem at 0% 110%, rgba(56, 189, 248, 0.05), transparent 60%);
+    background-attachment: fixed;
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-feature-settings: 'cv11', 'ss01';
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Scrollbar discreta y premium */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-surface-3);
+    border-radius: 999px;
+    border: 3px solid transparent;
+    background-clip: content-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-border-strong);
+    background-clip: content-box;
+  }
+
+  ::selection {
+    background: rgba(99, 102, 241, 0.35);
+  }
+}
+
+/*
+  Utilidades reutilizables. Se definen como clases normales (no @utility) para
+  poder usar gradientes y var() libremente; se componen con clases de Tailwind.
+*/
+@layer components {
+  .card {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-2xl);
+  }
+
+  .card-2 {
+    background-color: var(--color-surface-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-xl);
+  }
+
+  /* Borde superior con brillo tenue, da sensación de "cristal" */
+  .card-sheen {
+    position: relative;
+    overflow: hidden;
+  }
+  .card-sheen::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.12),
+      transparent
+    );
+  }
+
+  .focus-ring {
+    outline: none;
+  }
+  .focus-ring:focus-visible {
+    box-shadow:
+      0 0 0 2px var(--color-bg),
+      0 0 0 4px var(--color-brand);
+  }
+}
+
+/* Animaciones */
+@keyframes float-up {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse-glow {
+  0%,
+  100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.animate-float-up {
+  animation: float-up 0.4s ease-out both;
+}
