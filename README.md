@@ -40,6 +40,6 @@ Ajustes → Exportar (guárdalo en iCloud Drive). Si borras la app de la pantall
 
 ## Sincronización (Supabase)
 - Local primero: la app funciona offline; los cambios se suben/bajan en segundo plano.
-- Ajustes → Cuenta → correo → código de 6 dígitos. Mismo correo en todos tus dispositivos.
-- Setup único: correr `supabase/schema.sql` y agregar `{{ .Token }}` a la plantilla de correo **Magic Link**.
+- Ajustes → Cuenta → correo + contraseña. La misma cuenta en todos tus dispositivos.
+- Setup único: correr `supabase/schema.sql`. Opcional: desactivar "Confirm email" (Authentication → Sign In / Providers → Email).
 - La llave `sb_publishable_…` es pública por diseño; la seguridad la da RLS. Nunca subas la secret/service_role.

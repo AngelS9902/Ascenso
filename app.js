@@ -801,19 +801,18 @@ PAGES.account = () => {
       <p class="hint">Al cerrar sesión tus datos se quedan en este dispositivo.</p>`;
   }
   const err = ui.authErr ? `<p class="hint" style="color:var(--danger)">${esc(ui.authErr)}</p>` : '';
-  if (!ui.authSent) {
-    return `${head('Iniciar sesión')}
-      <p class="muted" style="margin:0 0 14px">Te enviaremos un código a tu correo. Sin contraseñas.</p>
-      <input class="input" id="auth-email" type="email" inputmode="email" autocomplete="email" placeholder="tu@correo.com" value="${esc(ui.authEmail || '')}">
-      ${err}
-      <button class="btn primary" data-action="auth-send" ${ui.authBusy ? 'disabled' : ''}>${ui.authBusy ? 'Enviando…' : 'Enviar código'}</button>`;
-  }
-  return `${head('Escribe el código')}
-    <p class="muted" style="margin:0 0 14px">Lo enviamos a <b>${esc(ui.authEmail)}</b>. Revisa también spam.</p>
-    <input class="input" id="auth-code" inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="123456" style="text-align:center;font-size:24px;letter-spacing:.3em">
-    ${err}
-    <button class="btn primary" data-action="auth-verify" ${ui.authBusy ? 'disabled' : ''}>${ui.authBusy ? 'Verificando…' : 'Entrar'}</button>
-    <button class="btn" data-action="auth-change">Cambiar correo</button>`;
+  const info = ui.authInfo ? `<p class="hint">${esc(ui.authInfo)}</p>` : '';
+  const signup = ui.authMode === 'signup';
+  return `${head(signup ? 'Crear cuenta' : 'Iniciar sesión')}
+    <form id="auth-form" autocomplete="on" onsubmit="return false">
+      <label class="sec-label" for="auth-email">Correo</label>
+      <input class="input" id="auth-email" name="email" type="email" inputmode="email" autocomplete="username" placeholder="tu@correo.com" value="${esc(ui.authEmail || '')}">
+      <label class="sec-label" for="auth-pass">Contraseña</label>
+      <input class="input" id="auth-pass" name="password" type="password" autocomplete="${signup ? 'new-password' : 'current-password'}" placeholder="${signup ? 'Mínimo 6 caracteres' : '••••••••'}">
+      ${err}${info}
+      <button type="submit" class="btn primary" data-action="auth-submit" ${ui.authBusy ? 'disabled' : ''}>${ui.authBusy ? 'Un momento…' : signup ? 'Crear cuenta' : 'Entrar'}</button>
+    </form>
+    <button class="btn" data-action="auth-mode">${signup ? 'Ya tengo cuenta' : 'Crear cuenta nueva'}</button>`;
 };
 
 /* ---------------- Backup ---------------- */
@@ -983,27 +982,30 @@ document.addEventListener('click', (e) => {
     case 'export': exportData(); break;
 
     // --- Cuenta
-    case 'auth-send': {
+    case 'auth-submit': {
       const email = $('#auth-email').value.trim().toLowerCase();
+      const pass = $('#auth-pass').value;
+      ui.authEmail = email; ui.authInfo = '';
       if (!/^\S+@\S+\.\S+$/.test(email)) { ui.authErr = 'Correo no válido'; renderSheet(); break; }
-      ui.authEmail = email; ui.authBusy = true; ui.authErr = ''; renderSheet();
-      Sync.sendCode(email)
-        .then(() => { ui.authSent = true; })
-        .catch((err) => { ui.authErr = err.status === 429 ? 'Demasiados intentos, espera unos minutos' : err.message; })
-        .finally(() => { ui.authBusy = false; renderSheet(); $('#auth-code')?.focus(); });
-      break;
-    }
-    case 'auth-verify': {
-      const code = $('#auth-code').value.replace(/\D/g, '');
-      if (code.length < 6) { ui.authErr = 'Escribe el código completo'; renderSheet(); break; }
+      if (pass.length < 6) { ui.authErr = 'La contraseña debe tener al menos 6 caracteres'; renderSheet(); break; }
+      const signup = ui.authMode === 'signup';
       ui.authBusy = true; ui.authErr = ''; renderSheet();
-      Sync.verify(ui.authEmail, code)
-        .then(() => { ui.authSent = false; toast('Sesión iniciada'); })
-        .catch((err) => { ui.authErr = /expired|invalid/i.test(err.message) ? 'Código incorrecto o vencido' : err.message; })
+      (signup ? Sync.signUp(email, pass) : Sync.signIn(email, pass).then(() => true))
+        .then((ok) => {
+          if (ok) { ui.authMode = 'login'; toast(signup ? 'Cuenta creada' : 'Sesión iniciada'); }
+          else { ui.authMode = 'login'; ui.authInfo = 'Te enviamos un correo para confirmar tu cuenta. Confírmala y luego inicia sesión aquí.'; }
+        })
+        .catch((err) => {
+          const m = err.message || '';
+          ui.authErr = /invalid login credentials/i.test(m) ? 'Correo o contraseña incorrectos'
+            : /email not confirmed/i.test(m) ? 'Primero confirma tu correo (revisa tu bandeja y spam)'
+            : /already registered|already exists/i.test(m) ? 'Ese correo ya tiene cuenta, inicia sesión'
+            : err.status === 429 ? 'Demasiados intentos, espera unos minutos' : m;
+        })
         .finally(() => { ui.authBusy = false; renderSheet(); });
       break;
     }
-    case 'auth-change': ui.authSent = false; ui.authErr = ''; renderSheet(); break;
+    case 'auth-mode': ui.authMode = ui.authMode === 'signup' ? 'login' : 'signup'; ui.authErr = ''; ui.authInfo = ''; renderSheet(); break;
     case 'sync-now': Sync.sync(); break;
     case 'sign-out': Sync.signOut().then(() => { renderSheet(); toast('Sesión cerrada'); }); break;
     case 'import': $('#import-file').click(); break;

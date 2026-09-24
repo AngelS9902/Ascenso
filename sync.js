@@ -5,7 +5,7 @@
    - Local primero: IndexedDB sigue siendo la fuente principal.
    - push: sube lo que cambió respecto a la última copia sincronizada (shadow).
    - pull: baja lo que cambió en el servidor desde el último cursor (server_at).
-   - Login: código de un solo uso por correo (funciona dentro de la PWA).
+   - Login: correo + contraseña (Supabase Auth).
    ========================================================= */
 
 const SB_URL = 'https://qkezslqtuxsonyuxrizv.supabase.co';
@@ -54,12 +54,19 @@ const Sync = {
     return txt ? JSON.parse(txt) : null;
   },
 
-  /* ---------- Auth (código por correo) ---------- */
-  async sendCode(email) {
-    await this.api('/auth/v1/otp', { method: 'POST', auth: false, body: { email, create_user: true } });
+  /* ---------- Auth (correo + contraseña) ---------- */
+  async signIn(email, password) {
+    const r = await this.api('/auth/v1/token?grant_type=password', { method: 'POST', auth: false, body: { email, password } });
+    await this.afterLogin(r);
   },
-  async verify(email, token) {
-    const r = await this.api('/auth/v1/verify', { method: 'POST', auth: false, body: { type: 'email', email, token } });
+  /** Devuelve true si quedó con sesión; false si Supabase pide confirmar el correo */
+  async signUp(email, password) {
+    const r = await this.api('/auth/v1/signup', { method: 'POST', auth: false, body: { email, password } });
+    if (!r?.access_token) return false;
+    await this.afterLogin(r);
+    return true;
+  },
+  async afterLogin(r) {
     await this.setSession(r);
     if (this.meta.userId !== r.user.id) this.meta = { ...emptyMeta(), userId: r.user.id };
     await this.saveMeta();
