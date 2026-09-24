@@ -5,7 +5,7 @@
    Datos: IndexedDB (+ espejo en localStorage)
    ========================================================= */
 
-const APP_VERSION = '1.1.1';
+const APP_VERSION = '1.2.0';
 const DB_NAME = 'habitos-db';
 const STORE = 'kv';
 
@@ -98,12 +98,38 @@ async function loadState() {
   if (s && Array.isArray(s.habits)) state = hydrate(s);
 }
 let saveTimer = null;
-function save() {
+/** Guarda local y programa sincronización */
+function save() { persistLocal(); Sync.schedule(); }
+/** Solo guarda en el dispositivo */
+function persistLocal() {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(async () => {
     try { await idbSet('state', state); } catch (e) { console.warn(e); }
     try { localStorage.setItem('habitos-state', JSON.stringify(state)); } catch {}
   }, 150);
+}
+
+/* Hooks que llama sync.js */
+function onRemoteChanges() {
+  persistLocal(); applyTheme(); renderList();
+  if (['detail', 'stats', 'settings', 'account'].includes(topPage()?.name)) renderSheet();
+}
+function onSyncStatus() {
+  $('#btn-settings')?.classList.toggle('warn', Sync.status === 'error');
+  if (['settings', 'account'].includes(topPage()?.name)) renderSheet();
+}
+function syncStatusText() {
+  switch (Sync.status) {
+    case 'off': return 'Sin cuenta: tus datos solo están en este dispositivo';
+    case 'syncing': return 'Sincronizando…';
+    case 'offline': return 'Sin conexión: se sincroniza al volver';
+    case 'error': return 'Error: ' + Sync.error;
+    default: {
+      if (!Sync.meta.lastSync) return 'Conectado';
+      const m = Math.round((Date.now() - new Date(Sync.meta.lastSync)) / 60000);
+      return 'Sincronizado ' + (m < 1 ? 'hace un momento' : m < 60 ? `hace ${m} min` : `hace ${Math.round(m / 60)} h`);
+    }
+  }
 }
 
 /* ---------------- Fechas ---------------- */
@@ -740,6 +766,8 @@ PAGES.settings = () => {
   const ws = state.settings.weekStart;
   const th = state.settings.theme;
   return `${head('Ajustes')}
+    <span class="sec-label">Cuenta y sincronización</span>
+    <button class="row-btn" data-action="page" data-v="account"><span>${Sync.session ? esc(Sync.email) : 'Iniciar sesión para sincronizar'}<br><small class="muted">${esc(syncStatusText())}</small></span>${ic('chevron-right')}</button>
     <span class="sec-label">La semana empieza en</span>
     <div class="seg"><button data-action="ws" data-v="1" class="${ws === 1 ? 'on' : ''}">Lunes</button><button data-action="ws" data-v="0" class="${ws === 0 ? 'on' : ''}">Domingo</button></div>
     <span class="sec-label">Tema</span>
@@ -758,6 +786,34 @@ PAGES.settings = () => {
     <div class="panel"><div class="muted">Tus datos viven solo en este dispositivo. Exporta un respaldo seguido (iCloud Drive / Archivos).</div>
       <div class="btn-row"><button class="btn" data-action="export">${ic('upload')}Exportar</button><button class="btn" data-action="import">${ic('download')}Importar</button></div></div>
     <p class="hint">Hábitos v${APP_VERSION} · uso personal</p>`;
+};
+
+/* ---- Cuenta ---- */
+PAGES.account = () => {
+  if (Sync.session) {
+    return `${head('Cuenta')}
+      <div class="panel">
+        <div class="list-item"><span class="grow"><b>${esc(Sync.email)}</b><br><span class="muted">${esc(syncStatusText())}</span></span></div>
+      </div>
+      <p class="hint">Tus hábitos se guardan en este dispositivo y se sincronizan con tu cuenta. Inicia sesión con el mismo correo en tus otros dispositivos.</p>
+      <button class="btn primary" data-action="sync-now" ${Sync.status === 'syncing' ? 'disabled' : ''}>Sincronizar ahora</button>
+      <button class="btn danger" data-action="sign-out">Cerrar sesión</button>
+      <p class="hint">Al cerrar sesión tus datos se quedan en este dispositivo.</p>`;
+  }
+  const err = ui.authErr ? `<p class="hint" style="color:var(--danger)">${esc(ui.authErr)}</p>` : '';
+  if (!ui.authSent) {
+    return `${head('Iniciar sesión')}
+      <p class="muted" style="margin:0 0 14px">Te enviaremos un código a tu correo. Sin contraseñas.</p>
+      <input class="input" id="auth-email" type="email" inputmode="email" autocomplete="email" placeholder="tu@correo.com" value="${esc(ui.authEmail || '')}">
+      ${err}
+      <button class="btn primary" data-action="auth-send" ${ui.authBusy ? 'disabled' : ''}>${ui.authBusy ? 'Enviando…' : 'Enviar código'}</button>`;
+  }
+  return `${head('Escribe el código')}
+    <p class="muted" style="margin:0 0 14px">Lo enviamos a <b>${esc(ui.authEmail)}</b>. Revisa también spam.</p>
+    <input class="input" id="auth-code" inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="123456" style="text-align:center;font-size:24px;letter-spacing:.3em">
+    ${err}
+    <button class="btn primary" data-action="auth-verify" ${ui.authBusy ? 'disabled' : ''}>${ui.authBusy ? 'Verificando…' : 'Entrar'}</button>
+    <button class="btn" data-action="auth-change">Cambiar correo</button>`;
 };
 
 /* ---------------- Backup ---------------- */
@@ -925,6 +981,31 @@ document.addEventListener('click', (e) => {
     }
     case 'unarchive': byId(id).archived = false; save(); renderSheet(); break;
     case 'export': exportData(); break;
+
+    // --- Cuenta
+    case 'auth-send': {
+      const email = $('#auth-email').value.trim().toLowerCase();
+      if (!/^\S+@\S+\.\S+$/.test(email)) { ui.authErr = 'Correo no válido'; renderSheet(); break; }
+      ui.authEmail = email; ui.authBusy = true; ui.authErr = ''; renderSheet();
+      Sync.sendCode(email)
+        .then(() => { ui.authSent = true; })
+        .catch((err) => { ui.authErr = err.status === 429 ? 'Demasiados intentos, espera unos minutos' : err.message; })
+        .finally(() => { ui.authBusy = false; renderSheet(); $('#auth-code')?.focus(); });
+      break;
+    }
+    case 'auth-verify': {
+      const code = $('#auth-code').value.replace(/\D/g, '');
+      if (code.length < 6) { ui.authErr = 'Escribe el código completo'; renderSheet(); break; }
+      ui.authBusy = true; ui.authErr = ''; renderSheet();
+      Sync.verify(ui.authEmail, code)
+        .then(() => { ui.authSent = false; toast('Sesión iniciada'); })
+        .catch((err) => { ui.authErr = /expired|invalid/i.test(err.message) ? 'Código incorrecto o vencido' : err.message; })
+        .finally(() => { ui.authBusy = false; renderSheet(); });
+      break;
+    }
+    case 'auth-change': ui.authSent = false; ui.authErr = ''; renderSheet(); break;
+    case 'sync-now': Sync.sync(); break;
+    case 'sign-out': Sync.signOut().then(() => { renderSheet(); toast('Sesión cerrada'); }); break;
     case 'import': $('#import-file').click(); break;
   }
 });
@@ -994,6 +1075,7 @@ document.addEventListener('visibilitychange', () => {
   await loadState();
   applyTheme();
   renderList();
+  Sync.init();
   try { await navigator.storage?.persist?.(); } catch {}
   if ('serviceWorker' in navigator && location.protocol !== 'file:') {
     try {

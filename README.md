@@ -9,6 +9,8 @@ Vanilla JS, sin dependencias ni build. Íconos: Lucide (ISC). Datos en IndexedDB
 | style.css | Estilos (oscuro/claro) |
 | app.js | Lógica: hábitos, rachas, vistas, estadísticas, recordatorios (.ics), respaldo |
 | icons.js | Set de íconos Lucide |
+| sync.js | Sincronización con Supabase (login por código de correo) |
+| supabase/schema.sql | Tablas + RLS (pegar en SQL Editor) |
 | sw.js | Service worker (offline). **Sube `CACHE` en cada deploy** |
 | manifest.webmanifest | Instalación como app |
 
@@ -35,3 +37,9 @@ La app toma la versión nueva al abrirla 1–2 veces.
 
 ## Respaldo
 Ajustes → Exportar (guárdalo en iCloud Drive). Si borras la app de la pantalla de inicio se borran los datos.
+
+## Sincronización (Supabase)
+- Local primero: la app funciona offline; los cambios se suben/bajan en segundo plano.
+- Ajustes → Cuenta → correo → código de 6 dígitos. Mismo correo en todos tus dispositivos.
+- Setup único: correr `supabase/schema.sql` y agregar `{{ .Token }}` a la plantilla de correo **Magic Link**.
+- La llave `sb_publishable_…` es pública por diseño; la seguridad la da RLS. Nunca subas la secret/service_role.
