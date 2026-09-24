@@ -1,64 +1,36 @@
-# Ascenso · Crecimiento Personal
+# Hábitos — clon personal de HabitKit (PWA)
 
-Una aplicación de crecimiento personal con mecánicas de RPG: convierte tu vida en
-una **hoja de personaje**. Ganas experiencia por categoría, subes de nivel,
-desbloqueas logros y títulos, avanzas en un árbol de progreso (estilo Minecraft),
-derrotas "jefes" (metas grandes), completas mazmorras (retos temporales) y
-mantienes una barra de energía que **nunca destruye tu progreso histórico**.
-
-> "Estoy subiendo de nivel en mi vida real."
-
-## Stack
-
-- **React + Vite** — interfaz y bundling.
-- **Tailwind CSS v4** — sistema de diseño minimalista y premium (tema oscuro).
-- **Zustand + Immer** — estado del juego, con persistencia automática.
-- **Framer Motion** — animaciones de desbloqueo y subida de nivel.
-- **lucide-react** — iconografía limpia.
-
-Los datos se guardan **localmente** (localStorage). Todo el estado vive como un
-único JSON, listo para migrar a **Supabase** sin reescribir la app (ver
-`src/store/storage.js`).
-
-## Desarrollo local
-
-```bash
-npm install      # instalar dependencias (una sola vez)
-npm run dev      # servidor de desarrollo → http://localhost:5173
-npm run build    # build de producción en /dist
-npm run preview  # previsualizar el build
-```
+Vanilla JS, sin dependencias ni build. Datos en IndexedDB (solo en tu dispositivo).
 
 ## Estructura
+| Archivo | Qué hace |
+|---|---|
+| index.html | Shell + meta tags de iOS |
+| style.css | Estilos (oscuro/claro) |
+| app.js | Lógica: hábitos, rachas, heatmap, calendario, respaldo |
+| sw.js | Service worker (offline). **Sube `CACHE` en cada deploy** |
+| manifest.webmanifest | Instalación como app |
 
+## Probar local
+```bash
+python3 -m http.server 8000   # abre http://localhost:8000
 ```
-src/
-├── data/        Definiciones del juego (categorías, acciones, logros,
-│                títulos, árbol, jefes, mazmorras)
-├── lib/         Utilidades puras (niveles, energía, fechas, formato, color)
-├── store/       Estado (Zustand), motor de desbloqueos y persistencia
-├── components/  UI reutilizable (Layout, Icon, modales, toasts…)
-└── pages/       Pantallas (Dashboard, Categorías, Árbol, Logros, Jefes,
-                 Mazmorras, Estadísticas, Perfil)
-```
 
-## Despliegue en GitHub Pages
+## Deploy
+Automático con GitHub Actions (`.github/workflows/deploy.yml`) en cada push a `main`.
+Requisito único: Settings → Pages → Source: **GitHub Actions**.
 
-El proyecto está listo para GitHub Pages:
+URL: `https://angels9902.github.io/Ascenso/`
 
-- `vite.config.js` usa `base: './'` (rutas relativas).
-- Se usa `HashRouter`, así que no hay 404 al recargar.
-- El workflow `.github/workflows/deploy.yml` construye y publica automáticamente.
+## Proyecto anterior
+`_legacy/` (ignorado por git) guarda la app Ascenso: `ascenso-actual/` (último index.html sin commitear) y `ascenso-react-v1/` (versión React del commit 014196a, también en el historial de git).
 
-Pasos (cuando quieras subirlo):
+## Instalar en iPhone
+Safari → URL → Compartir → **Agregar a pantalla de inicio**.
 
-1. Sube el repositorio a GitHub.
-2. En **Settings → Pages**, elige **Source: GitHub Actions**.
-3. Haz push a `main`. El workflow construye y publica la app.
+## Actualizar
+1. Edita el código  2. Sube `CACHE` en sw.js (ej. `habitos-v1.0.1`)  3. push
+La app toma la versión nueva al abrirla 1–2 veces.
 
-## Migración futura a Supabase
-
-Toda la persistencia está aislada en `src/store/storage.js`. Para sincronizar
-entre dispositivos, se reemplaza el adaptador de localStorage por uno que
-lea/escriba el mismo JSON en Supabase (con autenticación). El resto de la app no
-cambia. Hay notas detalladas en ese archivo.
+## Respaldo
+Ajustes → Exportar (guárdalo en iCloud Drive). Si borras la app de la pantalla de inicio se borran los datos.
