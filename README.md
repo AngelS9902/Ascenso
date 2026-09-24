@@ -1,13 +1,14 @@
 # Hábitos — clon personal de HabitKit (PWA)
 
-Vanilla JS, sin dependencias ni build. Datos en IndexedDB (solo en tu dispositivo).
+Vanilla JS, sin dependencias ni build. Íconos: Lucide (ISC). Datos en IndexedDB (solo en tu dispositivo).
 
 ## Estructura
 | Archivo | Qué hace |
 |---|---|
 | index.html | Shell + meta tags de iOS |
 | style.css | Estilos (oscuro/claro) |
-| app.js | Lógica: hábitos, rachas, heatmap, calendario, respaldo |
+| app.js | Lógica: hábitos, rachas, vistas, estadísticas, recordatorios (.ics), respaldo |
+| icons.js | Set de íconos Lucide |
 | sw.js | Service worker (offline). **Sube `CACHE` en cada deploy** |
 | manifest.webmanifest | Instalación como app |
 

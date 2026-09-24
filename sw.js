@@ -1,7 +1,7 @@
 // Sube la versión en cada deploy para forzar actualización del caché
-const CACHE = 'habitos-v1.0.0';
+const CACHE = 'habitos-v1.1.0';
 const ASSETS = [
-  './', './index.html', './style.css', './app.js', './manifest.webmanifest',
+  './', './index.html', './style.css', './icons.js', './app.js', './manifest.webmanifest',
   './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png',
 ];
 
