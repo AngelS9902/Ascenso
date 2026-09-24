@@ -5,7 +5,7 @@
    Datos: IndexedDB (+ espejo en localStorage)
    ========================================================= */
 
-const APP_VERSION = '1.2.0';
+const APP_VERSION = '1.2.1';
 const DB_NAME = 'habitos-db';
 const STORE = 'kv';
 
@@ -42,7 +42,7 @@ let ui = { stack: [], draft: null, adv: true, showExceed: false, iconQuery: '', 
 function defaultState() {
   return {
     version: 2,
-    settings: { weekStart: 1, theme: 'auto', view: 'grid', showFilter: false, filter: null, customCats: [] },
+    settings: { weekStart: 1, theme: 'auto', view: 'grid', hideChips: false, filter: null, customCats: [] },
     habits: [],
     entries: {}, // { habitId: { 'YYYY-MM-DD': valor } }
   };
@@ -328,19 +328,15 @@ function heatmapHTML(h, cols) {
 /* ---------------- Render: pantalla principal ---------------- */
 function renderTop() {
   const s = state.settings;
-  $('#btn-filter').classList.toggle('on', s.showFilter || !!s.filter);
   const chips = $('#chips');
+  // Categorías que tienen al menos un hábito activo, en el orden de la lista
   const used = allCats().filter((c) => activeHabits().some((h) => h.categories.includes(c.id)));
-  const cur = s.filter ? catById(s.filter) : null;
-  if (!s.showFilter) {
-    chips.hidden = !cur;
-    chips.innerHTML = cur ? `<button class="chip on" data-action="filter" data-v="">${ic(cur.icon)}${esc(cur.name)} ${ic('x')}</button>` : '';
-    return;
-  }
-  chips.hidden = false;
-  chips.innerHTML = `<button class="chip ${!s.filter ? 'on' : ''}" data-action="filter" data-v="">Todas</button>` +
-    (used.length ? used.map((c) => `<button class="chip ${s.filter === c.id ? 'on' : ''}" data-action="filter" data-v="${c.id}">${ic(c.icon)}${esc(c.name)}</button>`).join('')
-      : '<span class="chip">Asigna categorías al editar un hábito</span>');
+  if (s.filter && !used.some((c) => c.id === s.filter)) s.filter = null;
+  $('#btn-filter').classList.toggle('on', !!s.filter);
+  $('#btn-filter').hidden = !used.length;
+  chips.hidden = !used.length || s.hideChips;
+  chips.innerHTML = used.map((c) =>
+    `<button class="chip ${s.filter === c.id ? 'on' : ''}" data-action="filter" data-v="${c.id}">${ic(c.icon)}${esc(c.name)}</button>`).join('');
 }
 
 function renderList() {
@@ -892,7 +888,7 @@ document.addEventListener('click', (e) => {
     case 'close': closeAll(); break;
     case 'back': back(); break;
     case 'view': state.settings.view = v; save(); renderList(); window.scrollTo(0, 0); break;
-    case 'filter': state.settings.filter = v || null; save(); renderList(); break;
+    case 'filter': state.settings.filter = state.settings.filter === v ? null : v; persistLocal(); renderList(); window.scrollTo(0, 0); break;
 
     // --- Formulario
     case 'edit': ui.draft = draftFrom(byId(p.id)); ui.adv = true; ui.showExceed = byId(p.id).allowExceed; openSheet('edit'); break;
@@ -1044,10 +1040,11 @@ $('#btn-add').addEventListener('click', () => { ui.draft = newDraft(); ui.adv = 
 $('#btn-settings').addEventListener('click', () => openSheet('settings'));
 $('#btn-stats').addEventListener('click', () => openSheet('stats'));
 $('#btn-filter').addEventListener('click', () => {
+  // Muestra/oculta la barra de categorías (al ocultarla se quita el filtro)
   const s = state.settings;
-  s.showFilter = !s.showFilter;
-  if (!s.showFilter) s.filter = null;
-  save(); renderList();
+  s.hideChips = !s.hideChips;
+  if (s.hideChips) s.filter = null;
+  persistLocal(); renderList();
 });
 $('.backdrop').addEventListener('click', () => back());
 $('#import-file').addEventListener('change', (e) => { const f = e.target.files[0]; if (f) importData(f); e.target.value = ''; });

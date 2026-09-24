@@ -1,5 +1,5 @@
 // Sube la versión en cada deploy (también APP_VERSION en app.js)
-const CACHE = 'habitos-v1.2.0';
+const CACHE = 'habitos-v1.2.1';
 const ASSETS = [
   './', './index.html', './style.css', './icons.js', './sync.js', './app.js', './manifest.webmanifest',
   './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png',
